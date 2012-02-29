@@ -91,13 +91,20 @@ git_update_submodules() {
 
     # The parent repo may only fall back to the same remote (thus the OWNER
     # repetition)
-    local worked=$(git_fallback $OWNER $BRANCH $OWNER | while read remote branch; do
+    local worked=0
+    old_IFS="$IFS"
+    for fullbranch in $(git_fallback_branch novas0x2a rawr piston); do
+        IFS=/
+        set -- $fullbranch
+        local remote="$1"
+        local branch="$2"
         git remote add $remote "git@github.com:$remote/$REPO.git" || true
         git fetch $remote || continue
         git checkout "$remote/$branch" || continue
-        echo 1
+        worked=1
         break
-    done)
+    done
+    IFS="$old_IFS"
 
     if test $worked -ne 1; then
         die "Failed to check out branch $OWNER/$BRANCH or fallbacks"
