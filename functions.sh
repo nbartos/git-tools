@@ -72,19 +72,17 @@ git_build_fetches() {
 #echo "Given[bob/diablo/master] Expected[bob/diablo/master upstream/diablo/master] Got[" `git_fallback_branch bob diablo/master upstream` "]"
 #echo "Given[bob/diablo/dev] Expected[bob/diablo/dev upstream/diablo/dev upstream/diablo/master] Got[" `git_fallback_branch bob diablo/dev upstream` "]"
 
-git_update_submodules() {
-    # clone_update <owner> <branch> [fallback-owner]
-    if test $# -gt 3 -o $# -lt 2; then
-        die "git_update_submodules <owner> <branch> [fallback-owner]"
+git_init_parent() {
+    if test $# -ne 2; then
+        die "git_init_parent <owner> <branch>"
     fi
 
     if test "$(git rev-parse --git-dir)" != ".git"; then
-        die "git_update_submodules: CWD must be the top level of a git repo"
+        die "git_init_parent: CWD must be the top level of a git repo"
     fi
 
     local OWNER="$1"
     local BRANCH="$2"
-    local FALLBACK="${3:-${OWNER}}"
     local REPO=$(basename $PWD)
 
     git clean -f -d -x
@@ -107,8 +105,22 @@ git_update_submodules() {
     IFS="$old_IFS"
 
     if test $worked -ne 1; then
-        die "Failed to check out branch $OWNER/$BRANCH or fallbacks"
+        die "Failed to check out parent branch $OWNER/$BRANCH"
     fi
+}
+
+git_update_submodules() {
+    if test $# -gt 3 -o $# -lt 2; then
+        die "git_update_submodules <owner> <branch> [fallback-owner]"
+    fi
+
+    if test "$(git rev-parse --git-dir)" != ".git"; then
+        die "git_update_submodules: CWD must be the top level of a git repo"
+    fi
+
+    local OWNER="$1"
+    local BRANCH="$2"
+    local FALLBACK="${3:-${OWNER}}"
 
     git submodule update --init
 
