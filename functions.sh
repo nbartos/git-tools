@@ -89,19 +89,18 @@ git_update_submodules() {
 
     git clean -f -d -x
 
-    local branches="$(git_fallback_branch $OWNER $BRANCH $FALLBACK)"
-    git_fallback $OWNER $BRANCH $FALLBACK | while read remote branch; do
+    # The parent repo may only fall back to the same remote (thus the OWNER
+    # repetition)
+    local worked=$(git_fallback $OWNER $BRANCH $OWNER | while read remote branch; do
         git remote add $remote "git@github.com:$remote/$REPO.git" || true
-        #git fetch $remote || continue
-        git checkout "$remote/$branch" && break
-    done
+        git fetch $remote || continue
+        git checkout "$remote/$branch" || continue
+        echo 1
+        break
+    done)
 
-    #if ! git rev-parse -q --verify $OWNER/$BRANCH >/dev/null; then
-    #    die "Could not create branch $OWNER/$BRANCH"
-    #fi
-
-    if ! test "$(git rev-parse $OWNER/$BRANCH)" != "$(git rev-parse HEAD)"; then
-        die "Failed to check out branch $OWNER/$BRANCH"
+    if test $worked -ne 1; then
+        die "Failed to check out branch $OWNER/$BRANCH or fallbacks"
     fi
 
     git submodule update --init
