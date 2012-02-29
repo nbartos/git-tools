@@ -93,7 +93,7 @@ git_update_submodules() {
     # repetition)
     local worked=0
     old_IFS="$IFS"
-    for fullbranch in $(git_fallback_branch novas0x2a rawr piston); do
+    for fullbranch in $(git_fallback_branch $OWNER $BRANCH $OWNER); do
         IFS=/
         set -- $fullbranch
         local remote="$1"
