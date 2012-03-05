@@ -122,6 +122,7 @@ git_update_submodules() {
     local BRANCH="$2"
     local FALLBACK="${3:-${OWNER}}"
 
+    git submodule sync
     git submodule update --init
 
     # Make sure we don't have a preexisting FETCH_HEAD
