@@ -1,5 +1,9 @@
 #!/bin/bash
 
+warn() {
+    echo "$@" >&2
+}
+
 die() {
     echo "$@" >&2
     exit 1
@@ -7,7 +11,7 @@ die() {
 
 git_fallback() {
     if test $# -ne 3 -o -z "$1" -o -z "$2" -o -z "$3"; then
-        die "git_update_submodules <owner> <branch> [fallback-owner]"
+        die "git_update_submodules <owner> <branch> [fallback-owner]" || return 1
     fi
 
     OWNER="$1"
@@ -43,23 +47,61 @@ git_fallback_branch() {
     git_fallback "$@" | while read remote branch; do echo -n "$remote/$branch "; done
 }
 
-git_build_fetches() {
-    if test $# -ne 3 -o -z "$1" -o -z "$2" -o -z "$3"; then
-        die "git_update_submodules <owner> <branch> [fallback-owner]"
+git_has_substring() {
+    if test $# -ne 2 -o -z "$1" -o -z "$2"; then
+        die "git_has_substring <substring> <string>" || return 1
+    fi
+
+    echo "$2" | grep -q "$1" >/dev/null 2>&1
+}
+
+git_build_fetch() {
+    if test $# -ne 4 -o -z "$1" -o -z "$2" -o -z "$3" -o -z "$4"; then
+        die "git_build_fetch <owner> <branch> <fallback-owner> <repository>" || return 1
     fi
 
     OWNER="$1"
     BRANCH="$2"
     FALLBACK="$3"
+    REPO="$4"
 
-    local first="1"
-    git_fallback $OWNER $BRANCH $FALLBACK | while read remote branch; do
-        if ! test $first = "1"; then
-            echo -n " || "
-        fi
-        first=0
-        echo "git fetch git@github.com:$remote/\$name $branch"
-    done
+    # Note this is all in a subshell, so I can turn off -e
+    (
+        set +e
+        for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
+            IFS=/
+            set -- $fullbranch
+            local remote="$1"
+            local branch="$2"
+
+            for try in `seq 1 5`; do
+                local msg
+                msg="$(git ls-remote -h --exit-code git@github.com:$remote/$REPO $branch 2>&1)"
+                case $? in
+                    0)
+                        warn "Choosing $remote/$REPO/$branch"
+                        echo "git fetch git@github.com:$remote/$REPO $branch"
+                        return 0
+                        ;;
+                    2)
+                        warn "No branch $branch in $remote/$REPO"
+                        continue 2
+                        ;;
+                    *)
+                        # Network Error, or no such repo
+                        if git_has_substring "Repository not found" "$msg"; then
+                            warn "No repo $REPO owned by $remote"
+                            continue 2
+                        else
+                            warn "Try $try/5 failed, could not contact remote"
+                            continue 1
+                        fi
+                        ;;
+                esac
+            done
+        done
+        die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK"
+    )
 }
 
 # Fallback tests:
@@ -74,11 +116,11 @@ git_build_fetches() {
 
 git_init_parent() {
     if test $# -ne 2; then
-        die "git_init_parent <owner> <branch>"
+        die "git_init_parent <owner> <branch>" || return 1
     fi
 
     if test "$(git rev-parse --git-dir)" != ".git"; then
-        die "git_init_parent: CWD must be the top level of a git repo"
+        die "git_init_parent: CWD must be the top level of a git repo" || return 1
     fi
 
     local OWNER="$1"
@@ -105,17 +147,17 @@ git_init_parent() {
     IFS="$old_IFS"
 
     if test $worked -ne 1; then
-        die "Failed to check out parent branch $OWNER/$BRANCH"
+        die "Failed to check out parent branch $OWNER/$BRANCH" || return 1
     fi
 }
 
 git_update_submodules() {
     if test $# -gt 3 -o $# -lt 2; then
-        die "git_update_submodules <owner> <branch> [fallback-owner]"
+        die "git_update_submodules <owner> <branch> [fallback-owner]" || return 1
     fi
 
     if test "$(git rev-parse --git-dir)" != ".git"; then
-        die "git_update_submodules: CWD must be the top level of a git repo"
+        die "git_update_submodules: CWD must be the top level of a git repo" || return 1
     fi
 
     local OWNER="$1"
@@ -128,9 +170,10 @@ git_update_submodules() {
     # Make sure we don't have a preexisting FETCH_HEAD
     git submodule foreach 'git update-ref -d FETCH_HEAD'
 
-    fetches="$(git_build_fetches $OWNER $BRANCH $FALLBACK) || die 'Could not fetch any branch'"
-
-    git submodule foreach $fetches
+    for name in $(git submodule foreach -q 'echo $name'); do
+        fetchcmd="$(git_build_fetch $OWNER $BRANCH $FALLBACK $name)"
+        (cd $name && $fetchcmd)
+    done
     git submodule foreach "git reset --hard FETCH_HEAD"
     git submodule foreach "git clean -f -d -x"
 }
