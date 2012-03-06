@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 warn() {
     echo "$@" >&2
@@ -55,50 +55,82 @@ git_has_substring() {
     echo "$2" | grep -q "$1" >/dev/null 2>&1
 }
 
-git_build_fetch() {
-    if test $# -ne 4 -o -z "$1" -o -z "$2" -o -z "$3" -o -z "$4"; then
-        die "git_build_fetch <owner> <branch> <fallback-owner> <repository>" || return 1
+git_retry_fetch() {
+    # Note this is all in a subshell, so I can turn off -e
+    (
+        set +e
+        for try in `seq 1 5`; do
+            local msg
+            msg="$(git fetch $@ 2>&1)"
+            case $? in
+                0)
+                    warn "git fetch $@ succeeded"
+                    return 0
+                    ;;
+                *)
+                    case "$msg" in
+                        *"Repository not found"*)
+                            warn "No repo while fetching $@"
+                            return 1
+                            ;;
+                        *"Couldn't find remote ref"*)
+                            warn "No branch while fetching $@"
+                            return 1
+                            ;;
+                        *"Permission denied"*)
+                            die "Permission denied while fetching $@. Fix permissions."
+                            ;;
+                        *)
+                            warn "Try $try/5 failed, could not contact remote [$msg]"
+                            sleep 1
+                            continue
+                            ;;
+                        esac
+                    ;;
+            esac
+        done
+        warn "Timed out while calling git_retry_fetch $@"
+        return 254
+    )
+}
+
+git_fallback_fetch() {
+    if test $# -ne 3 -o -z "$1" -o -z "$2" -o -z "$3"; then
+        die "git_fallback_fetch <owner> <branch> <fallback-owner>" || return 1
     fi
 
     OWNER="$1"
     BRANCH="$2"
     FALLBACK="$3"
-    REPO="$4"
+    local REPO=$(basename $PWD)
 
     # Note this is all in a subshell, so I can turn off -e
     (
         set +e
         for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
+
+            old_IFS="$IFS"
             IFS=/
             set -- $fullbranch
             local remote="$1"
             local branch="$2"
+            IFS="$old_IFS"
 
-            for try in `seq 1 5`; do
-                local msg
-                msg="$(git ls-remote -h --exit-code git@github.com:$remote/$REPO $branch 2>&1)"
-                case $? in
-                    0)
-                        warn "Choosing $remote/$REPO/$branch"
-                        echo "git fetch git@github.com:$remote/$REPO $branch"
-                        return 0
-                        ;;
-                    2)
-                        warn "No branch $branch in $remote/$REPO"
-                        continue 2
-                        ;;
-                    *)
-                        # Network Error, or no such repo
-                        if git_has_substring "Repository not found" "$msg"; then
-                            warn "No repo $REPO owned by $remote"
-                            continue 2
-                        else
-                            warn "Try $try/5 failed, could not contact remote"
-                            continue 1
-                        fi
-                        ;;
-                esac
-            done
+            local fetchcmd="git@github.com:$remote/$REPO $branch"
+            git_retry_fetch $fetchcmd
+            case $? in
+                0)
+                    warn "Choosing $remote/$REPO/$branch"
+                    echo $fetchcmd
+                    return 0
+                    ;;
+                254)
+                    return 1
+                    ;;
+                *)
+                    continue
+                    ;;
+            esac
         done
         die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK"
     )
@@ -132,19 +164,21 @@ git_init_parent() {
     # The parent repo may only fall back to the same remote (thus the OWNER
     # repetition)
     local worked=0
-    old_IFS="$IFS"
     for fullbranch in $(git_fallback_branch $OWNER $BRANCH $OWNER); do
+
+        old_IFS="$IFS"
         IFS=/
         set -- $fullbranch
         local remote="$1"
         local branch="$2"
+        IFS="$old_IFS"
+
         git remote add $remote "git@github.com:$remote/$REPO.git" || true
-        git fetch $remote || continue
+        git_retry_fetch $remote || continue
         git checkout "$remote/$branch" || continue
         worked=1
         break
     done
-    IFS="$old_IFS"
 
     if test $worked -ne 1; then
         die "Failed to check out parent branch $OWNER/$BRANCH" || return 1
@@ -168,11 +202,10 @@ git_update_submodules() {
     git submodule update --init
 
     # Make sure we don't have a preexisting FETCH_HEAD
-    git submodule foreach 'git update-ref -d FETCH_HEAD'
+    git submodule foreach 'git update-ref -d FETCH_HEAD || true'
 
     for name in $(git submodule foreach -q 'echo $name'); do
-        fetchcmd="$(git_build_fetch $OWNER $BRANCH $FALLBACK $name)"
-        (cd $name && $fetchcmd)
+        (cd $name && git_fallback_fetch $OWNER $BRANCH $FALLBACK)
     done
     git submodule foreach "git reset --hard FETCH_HEAD"
     git submodule foreach "git clean -f -d -x"
