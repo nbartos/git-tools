@@ -210,3 +210,38 @@ git_update_submodules() {
     git submodule foreach "git reset --hard FETCH_HEAD"
     git submodule foreach "git clean -f -d -x"
 }
+
+git_submodule_commit_log() {
+
+    if test $# -ne 6; then
+        die "git_submodule_commit_log <from> <to> <owner> <branch> <version> <formatter>" || return 1
+    fi
+
+    local FROM="$1"
+    local TO="$2"
+    local OWNER="$3"
+    local BRANCH="$4"
+    local VERSION="$5"
+    local FORMATTER="$6"
+
+    git clean -dfx
+    git submodule foreach git clean -dfx
+
+    local tagname="jenkins-tmp-tag-${OWNER}-${BRANCH}"
+
+    # We have to do this bit to make sure ORIG_HEAD reliably points to the HEADs involved in the last build
+    git commit -a --allow-empty -m "interim commit message for build $VERSION"
+    git tag -d "$tagname" || true
+    git tag "$tagname" $to
+
+    git checkout $FROM
+    git submodule foreach 'git reset --hard $sha1'
+    git checkout "$tagname"
+    git submodule foreach 'git reset --hard $sha1'
+    git tag -d "$tagname" || true
+
+    git clean -dfx
+    git submodule foreach git clean -dfx
+
+    git submodule foreach 'git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD' | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
+}
