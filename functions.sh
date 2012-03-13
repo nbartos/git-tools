@@ -205,7 +205,8 @@ git_update_submodules() {
     git submodule foreach 'git update-ref -d FETCH_HEAD || true'
 
     for name in $(git submodule foreach -q 'echo $name'); do
-        (cd $name && git_fallback_fetch $OWNER $BRANCH $FALLBACK)
+        repo=$(cd $name && git_fallback_fetch $OWNER $BRANCH $FALLBACK)
+        git config -f .gitmodules "submodule.$name.url" "${repo%% *}.git"
     done
     git submodule foreach "git reset --hard FETCH_HEAD"
     git submodule foreach "git clean -f -d -x"
