@@ -246,3 +246,25 @@ git_submodule_commit_log() {
 
     git submodule foreach 'git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD' | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
 }
+
+git_submodule_release_diff() {
+    if test $# -ne 2; then
+        die "git_submodule_commit_log <from> <to>" || return 1
+    fi
+
+    local FROM="$1"
+    local TO="$2"
+
+    local from_hash=$(git log --format='%h' --grep "Build ${FROM}")
+    local to_hash=$(git log --format='%h' --grep "Build ${TO}")
+
+    if test -z "$from_hash"; then
+        die "git_submodule_release_diff: could not find commit for build ${FROM}"
+    fi
+
+    if test -z "$to_hash"; then
+        die "git_submodule_release_diff: could not find commit for build ${TO}"
+    fi
+
+    git log --submodule=log ${from_hash}..${to_hash}
+}
