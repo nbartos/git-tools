@@ -36,7 +36,7 @@ git_fallback() {
         try="$try\n${FALLBACK} ${DIR_BRANCH}master"
     fi
 
-    echo $try
+    echo -e $try
 }
 
 git_fallback_remote() {
