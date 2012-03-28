@@ -174,7 +174,16 @@ git_init_parent() {
         IFS="$old_IFS"
 
         git remote add $remote "git@github.com:$remote/$REPO.git" || true
-        git_retry_fetch $remote || continue
+        git_retry_fetch $remote
+        case $? in
+            0) ;;
+            254) die "Retry timed out, must not continue."
+                ;;
+            *)
+                continue
+                ;;
+        esac
+
         git checkout "$remote/$branch" || continue
         worked=1
         break
