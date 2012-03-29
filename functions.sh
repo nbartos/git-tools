@@ -163,35 +163,36 @@ git_init_parent() {
 
     # The parent repo may only fall back to the same remote (thus the OWNER
     # repetition)
-    local worked=0
-    for fullbranch in $(git_fallback_branch $OWNER $BRANCH $OWNER); do
+    (
+        set +e
+        for fullbranch in $(git_fallback_branch $OWNER $BRANCH $OWNER); do
+            old_IFS="$IFS"
+            IFS=/
+            set -- $fullbranch
+            local remote="$1"
+            local branch="$2"
+            IFS="$old_IFS"
 
-        old_IFS="$IFS"
-        IFS=/
-        set -- $fullbranch
-        local remote="$1"
-        local branch="$2"
-        IFS="$old_IFS"
+            git remote add $remote "git@github.com:$remote/$REPO.git" || true
+            git_retry_fetch $remote
+            case $? in
+                0)
+                    # Okay, just move on.
+                    ;;
+                254)
+                    die "Retry timed out, must not continue."
+                    ;;
+                *)
+                    # The branch didn't exist, just try the next.
+                    continue
+                    ;;
+            esac
 
-        git remote add $remote "git@github.com:$remote/$REPO.git" || true
-        git_retry_fetch $remote
-        case $? in
-            0) ;;
-            254) die "Retry timed out, must not continue."
-                ;;
-            *)
-                continue
-                ;;
-        esac
-
-        git checkout "$remote/$branch" || continue
-        worked=1
-        break
-    done
-
-    if test $worked -ne 1; then
-        die "Failed to check out parent branch $OWNER/$BRANCH" || return 1
-    fi
+            git checkout "$remote/$branch" || continue
+            return 0
+        done
+        return 1
+    ) || die "Failed to check out parent branch $OWNER/$BRANCH" || return 1
 }
 
 git_update_submodules() {
