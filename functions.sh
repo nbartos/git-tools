@@ -36,15 +36,15 @@ git_fallback() {
         try="$try\n${FALLBACK} ${DIR_BRANCH}master"
     fi
 
-    echo -e $try
+    printf "$try\n"
 }
 
 git_fallback_remote() {
-    git_fallback "$@" | while read remote branch; do echo -n "$remote "; done
+    git_fallback "$@" | while read remote branch; do printf "$remote "; done
 }
 
 git_fallback_branch() {
-    git_fallback "$@" | while read remote branch; do echo -n "$remote/$branch "; done
+    git_fallback "$@" | while read remote branch; do printf "$remote/$branch "; done
 }
 
 git_has_substring() {
@@ -121,7 +121,7 @@ git_fallback_fetch() {
             case $? in
                 0)
                     warn "Choosing $remote/$REPO/$branch"
-                    echo $fetchcmd
+                    echo "$fetchcmd"
                     return 0
                     ;;
                 254)
@@ -214,7 +214,7 @@ git_update_submodules() {
     # Make sure we don't have a preexisting FETCH_HEAD
     git submodule foreach 'git update-ref -d FETCH_HEAD || true'
 
-    for name in $(git submodule foreach -q 'echo $name'); do
+    for name in $(git submodule foreach -q 'echo "$name"'); do
         repo=$(cd $name && git_fallback_fetch $OWNER $BRANCH $FALLBACK)
         git config -f .gitmodules "submodule.$name.url" "${repo%% *}.git"
     done
