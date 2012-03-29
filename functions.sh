@@ -78,7 +78,7 @@ git_retry_fetch() {
                             return 1
                             ;;
                         *"Permission denied"*)
-                            die "Permission denied while fetching $@. Fix permissions."
+                            die "Permission denied while fetching $@. Fix permissions." || return 1
                             ;;
                         *)
                             warn "Try $try/5 failed, could not contact remote [$msg]"
@@ -132,7 +132,7 @@ git_fallback_fetch() {
                     ;;
             esac
         done
-        die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK"
+        die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK" || return 1
     )
 }
 
@@ -268,11 +268,11 @@ git_submodule_release_diff() {
     local to_hash=$(git log --format='%h' --grep "Build ${TO}")
 
     if test -z "$from_hash"; then
-        die "git_submodule_release_diff: could not find commit for build ${FROM}"
+        die "git_submodule_release_diff: could not find commit for build ${FROM}" || return 1
     fi
 
     if test -z "$to_hash"; then
-        die "git_submodule_release_diff: could not find commit for build ${TO}"
+        die "git_submodule_release_diff: could not find commit for build ${TO}" || return 1
     fi
 
     git log --submodule=log ${from_hash}..${to_hash}
