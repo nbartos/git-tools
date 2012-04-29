@@ -11,7 +11,7 @@ die() {
 
 git_fallback() {
     if test $# -ne 3 -o -z "$1" -o -z "$2" -o -z "$3"; then
-        die "git_update_submodules <owner> <branch> [fallback-owner]" || return 1
+        die "git_fallback <owner> <branch> [fallback-owner]" || return 1
     fi
 
     OWNER="$1"
@@ -45,6 +45,10 @@ git_fallback_remote() {
 
 git_fallback_branch() {
     git_fallback "$@" | while read remote branch; do printf "$remote/$branch "; done
+}
+
+git_last_fallback_branch() {
+    git_fallback "$@" | while read remote branch; do echo "$remote/$branch"; done | tail -n1
 }
 
 git_has_substring() {
