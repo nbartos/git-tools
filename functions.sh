@@ -163,7 +163,7 @@ git_init_parent() {
     local BRANCH="$2"
     local REPO=$(basename $PWD)
 
-    git clean -f -d -x
+    git clean -f -f -d -x
 
     # The parent repo may only fall back to the same remote (thus the OWNER
     # repetition)
@@ -223,7 +223,7 @@ git_update_submodules() {
         git config -f .gitmodules "submodule.$name.url" "${repo%% *}.git"
     done
     git submodule foreach "git reset --hard FETCH_HEAD"
-    git submodule foreach "git clean -f -d -x"
+    git submodule foreach "git clean -f -f -d -x"
 }
 
 git_submodule_commit_log() {
@@ -239,8 +239,8 @@ git_submodule_commit_log() {
     local VERSION="$5"
     local FORMATTER="$6"
 
-    git clean -dfx
-    git submodule foreach git clean -dfx
+    git clean -dffx
+    git submodule foreach git clean -dffx
 
     local tagname="jenkins-tmp-tag-${OWNER}-${BRANCH}"
 
@@ -255,8 +255,8 @@ git_submodule_commit_log() {
     git submodule foreach 'git reset --hard $sha1'
     git tag -d "$tagname" || true
 
-    git clean -dfx
-    git submodule foreach git clean -dfx
+    git clean -dffx
+    git submodule foreach git clean -dffx
 
     git submodule foreach 'git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD' | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
 }
