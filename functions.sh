@@ -213,7 +213,7 @@ git_update_submodules() {
     local FALLBACK="${3:-${OWNER}}"
 
     git submodule sync
-    git submodule update --init
+    git submodule update --init --recursive
 
     # Make sure we don't have a preexisting FETCH_HEAD
     git submodule foreach 'git update-ref -d FETCH_HEAD || true'
