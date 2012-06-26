@@ -117,7 +117,8 @@ git_fallback_fetch() {
             IFS=/
             set -- $fullbranch
             local remote="$1"
-            local branch="$2"
+            shift 1
+            local branch="$(echo "$@" | tr ' ' /)"
             IFS="$old_IFS"
 
             local fetchcmd="git@github.com:$remote/$REPO $branch"
@@ -175,7 +176,8 @@ git_init_parent() {
             IFS=/
             set -- $fullbranch
             local remote="$1"
-            local branch="$2"
+            shift 1
+            local branch="$(echo "$@" | tr ' ' /)"
             IFS="$old_IFS"
 
             git remote add $remote "git@github.com:$remote/$REPO.git" || true
@@ -185,7 +187,7 @@ git_init_parent() {
                     # Okay, just move on.
                     ;;
                 254)
-                    die "Retry timed out, must not continue."
+                    die "Retry timed out, must not continue." || return 1
                     ;;
                 *)
                     # The branch didn't exist, just try the next.
