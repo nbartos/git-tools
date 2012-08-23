@@ -165,7 +165,8 @@ git_init_parent() {
     local REPO=$(basename $PWD)
 
     git clean -f -f -d -x
-    git reset --hard
+    # This can fail on a new repo
+    git reset --hard || true
 
     # The parent repo may only fall back to the same remote (thus the OWNER
     # repetition)
