@@ -217,7 +217,10 @@ git_update_submodules() {
     local FALLBACK="${3:-${OWNER}}"
 
     git submodule sync
-    git submodule update --init --recursive
+
+    # This can fail if the branch in question is old. The log message will be
+    # weird, but that's okay.
+    git submodule update --init --recursive || true
 
     # Make sure we don't have a preexisting FETCH_HEAD
     git submodule foreach 'git update-ref -d FETCH_HEAD || true'
