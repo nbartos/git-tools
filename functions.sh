@@ -272,14 +272,14 @@ git_submodule_commit_log() {
 
 git_submodule_release_diff() {
     if test $# -ne 2; then
-        die "git_submodule_commit_log <from> <to>" || return 1
+        die "git_submodule_release_diff <from-version> <to-version>" || return 1
     fi
 
     local FROM="$1"
     local TO="$2"
 
-    local from_hash=$(git log --format='%h' --grep "Build ${FROM}")
-    local to_hash=$(git log --format='%h' --grep "Build ${TO}")
+    local from_hash=$(git log --format='%h' --all --grep "Build ${FROM}")
+    local to_hash=$(git log --format='%h' --all --grep "Build ${TO}")
 
     if test -z "$from_hash"; then
         die "git_submodule_release_diff: could not find commit for build ${FROM}" || return 1
