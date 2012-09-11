@@ -257,7 +257,9 @@ git_submodule_commit_log() {
     git tag "$tagname" $to
 
     git checkout $FROM
-    git submodule foreach 'git reset --hard $sha1'
+    # If the first reset fails, the master repo points to a rev that no longer
+    # exists in the child
+    git submodule foreach 'git reset --hard $sha1 || (echo "REVISION $sha1 ON REPO $name DOES NOT EXIST. CHANGELOG WILL BE INACCURATE."; true)'
     git checkout "$tagname"
     git submodule foreach 'git reset --hard $sha1'
     git tag -d "$tagname" || true
