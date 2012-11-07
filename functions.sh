@@ -227,9 +227,14 @@ git_update_submodules() {
 
     for name in $(git submodule foreach -q 'echo "$name"'); do
         repo=$(cd $name && git_fallback_fetch $OWNER $BRANCH $FALLBACK)
+        (
+            cd $name
+            git tag -d BUILD_TARGET || true
+            git tag -m "$(echo $repo | sed -e 's/.*://' -e 's,/.* ,/,')" BUILD_TARGET FETCH_HEAD
+        )
         git config -f .gitmodules "submodule.$name.url" "${repo%% *}.git"
     done
-    git submodule foreach "git reset --hard FETCH_HEAD"
+    git submodule foreach "git reset --hard BUILD_TARGET"
     git submodule foreach "git clean -f -f -d -x"
 }
 
@@ -268,6 +273,13 @@ git_submodule_commit_log() {
     git submodule foreach git clean -dffx
 
     git submodule foreach 'git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD' | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
+
+    for name in $(git submodule foreach -q 'echo "$name"'); do
+        (
+        cd $name
+        echo "Entering '$name' ($(git tag -l BUILD_TARGET -n1 | sed -e  's/.* //'))"
+        git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD
+    ) done | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
 }
 
 git_submodule_release_diff() {
