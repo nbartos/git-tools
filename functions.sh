@@ -152,8 +152,8 @@ git_fallback_fetch() {
 #echo "Given[bob/diablo/dev] Expected[bob/diablo/dev upstream/diablo/dev upstream/diablo/master] Got[" `git_fallback_branch bob diablo/dev upstream` "]"
 
 git_init_parent() {
-    if test $# -ne 2; then
-        die "git_init_parent <owner> <branch>" || return 1
+    if test $# -gt 3 -o $# -lt 2; then
+        die "git_init_parent <owner> <branch> [<fallback-owner>]" || return 1
     fi
 
     if test "$(git rev-parse --git-dir)" != ".git"; then
@@ -162,6 +162,7 @@ git_init_parent() {
 
     local OWNER="$1"
     local BRANCH="$2"
+    local FALLBACK="${3:-${OWNER}}"
     local REPO=$(basename $PWD)
 
     git clean -f -f -d -x
@@ -172,7 +173,7 @@ git_init_parent() {
     # repetition)
     (
         set +e
-        for fullbranch in $(git_fallback_branch $OWNER $BRANCH $OWNER); do
+        for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
             old_IFS="$IFS"
             IFS=/
             set -- $fullbranch
@@ -200,7 +201,7 @@ git_init_parent() {
             return 0
         done
         return 1
-    ) || die "Failed to check out parent branch $OWNER/$BRANCH" || return 1
+    ) || die "Failed to check out parent branch" || return 1
 }
 
 git_update_submodules() {
