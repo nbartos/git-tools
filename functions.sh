@@ -198,6 +198,7 @@ git_init_parent() {
             esac
 
             git checkout "$remote/$branch" || continue
+            git clean -f -f -d -x
             return 0
         done
         return 1
@@ -263,10 +264,12 @@ git_submodule_commit_log() {
     git tag "$tagname" $to
 
     git checkout $FROM
+    git clean -f -f -d -x
     # If the first reset fails, the master repo points to a rev that no longer
     # exists in the child
     git submodule foreach 'git reset --hard $sha1 || (echo "REVISION $sha1 ON REPO $name DOES NOT EXIST. CHANGELOG WILL BE INACCURATE."; true)'
     git checkout "$tagname"
+    git clean -f -f -d -x
     git submodule foreach 'git reset --hard $sha1'
     git tag -d "$tagname" || true
 
