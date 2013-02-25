@@ -307,3 +307,16 @@ git_submodule_release_diff() {
 
     git log --submodule=log ${from_hash}..${to_hash}
 }
+
+git_enable_cached_ssh() {
+    local base="$(cd $(git rev-parse --git-dir) && pwd)"
+    local path="$(cd $(git rev-parse --git-dir) && pwd)/git-ssh-wrapper.sh"
+    local ssh_path="$base/piston-git-ssh-wrapper.sh"
+
+    cat <<EOF > "$ssh_path"
+#!/bin/sh
+exec ssh -F/dev/null -oTCPKeepAlive=yes -oServerAliveInterval=60 -oControlPersist=10m -oControlMaster=auto -oControlPath="$base/piston-controlmaster-%r@%h:%p" \$*
+EOF
+    chmod +x "$ssh_path"
+    echo "export GIT_SSH=$ssh_path"
+}
