@@ -169,11 +169,10 @@ git_init_parent() {
     # This can fail on a new repo
     git reset --hard || true
 
-    # The parent repo may only fall back to the same remote (thus the OWNER
-    # repetition)
     (
         set +e
-        for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
+
+        for fullbranch in $(git_last_fallback_branch $OWNER $BRANCH $FALLBACK); do
             old_IFS="$IFS"
             IFS=/
             set -- $fullbranch
