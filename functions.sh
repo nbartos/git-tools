@@ -277,16 +277,22 @@ git_submodule_commit_log() {
     git clean -dffx
     git submodule foreach git clean -dffx
 
+    local tmpfile=$(mktemp --suffix=.pentos-msg)
     for name in $(git submodule foreach -q 'echo "$name"'); do
-        (
+    (
         cd $name
         echo "Entering '$name' ($(git tag -l BUILD_TARGET -n1 | sed -e  's/.* //'))"
         git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD
-    ) done | $FORMATTER $OWNER $VERSION > msg
+    ) done | $FORMATTER $OWNER $VERSION > $tmpfile
 
     # Create a new commit with the same tree as $to, but with different parents
-    git reset --hard $(git commit-tree $(git rev-parse "$to^{tree}") -p "$from" -p "${OWNER}/${BRANCH}" < msg)
+    if git rev-parse --quiet --verify "$GITHUB_OWNER/$GITHUB_BRANCH"; then
+        git reset --hard $(git commit-tree $(git rev-parse "$to^{tree}") -p "$from" -p "${OWNER}/${BRANCH}" < $tmpfile)
+    else
+        git reset --hard $(git commit-tree $(git rev-parse "$to^{tree}") -p "$from" < $tmpfile)
+    fi
 
+    rm -f $tmpfile
     git tag -d "$from" "$to"
 }
 
