@@ -40,7 +40,7 @@ git_fallback() {
 }
 
 git_fallback_remote() {
-    git_fallback "$@" | while read remote branch; do printf "$remote "; done
+    git_fallback "$@" | while read remote branch; do echo "$remote"; done | uniq
 }
 
 git_fallback_branch() {
@@ -98,9 +98,9 @@ git_retry_fetch() {
     )
 }
 
-git_fallback_fetch() {
+git_select_branch() {
     if test $# -ne 3 -o -z "$1" -o -z "$2" -o -z "$3"; then
-        die "git_fallback_fetch <owner> <branch> <fallback-owner>" || return 1
+        die "git_select_branch <owner> <branch> <fallback-owner>" || return 1
     fi
 
     OWNER="$1"
@@ -108,37 +108,14 @@ git_fallback_fetch() {
     FALLBACK="$3"
     local REPO=$(basename $PWD)
 
-    # Note this is all in a subshell, so I can turn off -e
-    (
-        set +e
-        for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
-
-            old_IFS="$IFS"
-            IFS=/
-            set -- $fullbranch
-            local remote="$1"
-            shift 1
-            local branch="$(echo "$@" | tr ' ' /)"
-            IFS="$old_IFS"
-
-            local fetchcmd="git@github.com:$remote/$REPO $branch"
-            git_retry_fetch $fetchcmd
-            case $? in
-                0)
-                    warn "Choosing $remote/$REPO/$branch"
-                    echo "$fetchcmd"
-                    return 0
-                    ;;
-                254)
-                    return 1
-                    ;;
-                *)
-                    continue
-                    ;;
-            esac
-        done
-        die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK" || return 1
-    )
+    for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
+        if git rev-parse --quiet --verify "$fullbranch" > /dev/null; then
+            warn "Choosing $REPO/$fullbranch"
+            echo "$fullbranch"
+            return 0
+        fi
+    done
+    die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK" || return 1
 }
 
 # Fallback tests:
@@ -169,39 +146,25 @@ git_init_parent() {
     # This can fail on a new repo
     git reset --hard || true
 
+    # Add remotes and fetch them
+    for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
+        git remote add $remote "git@github.com:$remote/$REPO.git" || true
+        git_retry_fetch $remote || true
+    done
+
+    git checkout "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
+    git clean -f -f -d -x
+
+    # Add child remotes and fetch them
+    for name in $(git submodule foreach -q 'echo "$name"'); do
     (
-        set +e
-
-        for fullbranch in $(git_last_fallback_branch $OWNER $BRANCH $FALLBACK); do
-            old_IFS="$IFS"
-            IFS=/
-            set -- $fullbranch
-            local remote="$1"
-            shift 1
-            local branch="$(echo "$@" | tr ' ' /)"
-            IFS="$old_IFS"
-
-            git remote add $remote "git@github.com:$remote/$REPO.git" || true
-            git_retry_fetch $remote
-            case $? in
-                0)
-                    # Okay, just move on.
-                    ;;
-                254)
-                    die "Retry timed out, must not continue." || return 1
-                    ;;
-                *)
-                    # The branch didn't exist, just try the next.
-                    continue
-                    ;;
-            esac
-
-            git checkout "$remote/$branch" || continue
-            git clean -f -f -d -x
-            return 0
+        cd $name
+        echo "Entering '$name'"
+        for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
+            git remote add $remote "git@github.com:$remote/$name.git" || true
+            git_retry_fetch $remote || true
         done
-        return 1
-    ) || die "Failed to check out parent branch" || return 1
+    ) done
 }
 
 git_update_submodules() {
@@ -223,17 +186,14 @@ git_update_submodules() {
     # weird, but that's okay.
     git submodule update --init --recursive || true
 
-    # Make sure we don't have a preexisting FETCH_HEAD
-    git submodule foreach 'git update-ref -d FETCH_HEAD || true'
-
     for name in $(git submodule foreach -q 'echo "$name"'); do
-        repo=$(cd $name && git_fallback_fetch $OWNER $BRANCH $FALLBACK)
+        branch=$(cd $name && git_select_branch $OWNER $BRANCH $FALLBACK)
         (
             cd $name
             git tag -d BUILD_TARGET || true
-            git tag -m "$(echo $repo | sed -e 's/.*://' -e 's,/.* ,/,')" BUILD_TARGET FETCH_HEAD
+            git tag -m "$branch" BUILD_TARGET "$branch"
         )
-        git config -f .gitmodules "submodule.$name.url" "${repo%% *}.git"
+        git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
     done
     git submodule foreach "git reset --hard BUILD_TARGET"
     git submodule foreach "git clean -f -f -d -x"
@@ -283,7 +243,8 @@ git_submodule_commit_log() {
         cd $name
         echo "Entering '$name' ($(git tag -l BUILD_TARGET -n1 | sed -e  's/.* //'))"
         git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD
-    ) done | $FORMATTER $OWNER $VERSION > $tmpfile
+    )
+    done | $FORMATTER $OWNER $VERSION > $tmpfile
 
     # Create a new commit with the same tree as $to, but with different parents
     local tree=$(git rev-parse "$to^{tree}")
