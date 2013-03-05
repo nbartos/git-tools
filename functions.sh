@@ -286,11 +286,16 @@ git_submodule_commit_log() {
     ) done | $FORMATTER $OWNER $VERSION > $tmpfile
 
     # Create a new commit with the same tree as $to, but with different parents
+    local tree=$(git rev-parse "$to^{tree}")
     if git rev-parse --quiet --verify "$GITHUB_OWNER/$GITHUB_BRANCH"; then
-        git reset --hard $(git commit-tree $(git rev-parse "$to^{tree}") -p "$from" -p "${OWNER}/${BRANCH}" < $tmpfile)
+        rev=$(git commit-tree "$tree" -p "$from" -p "${OWNER}/${BRANCH}" < $tmpfile)
     else
-        git reset --hard $(git commit-tree $(git rev-parse "$to^{tree}") -p "$from" < $tmpfile)
+        rev=$(git commit-tree "$tree" -p "$from" < $tmpfile)
     fi
+    if [ -z "$rev" ]; then
+        die "commit failed" || return 1
+    fi
+    git reset --hard "$rev"
 
     rm -f $tmpfile
     git tag -d "$from" "$to"
