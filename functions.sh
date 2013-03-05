@@ -245,8 +245,8 @@ git_submodule_commit_log() {
         die "git_submodule_commit_log <from> <to> <owner> <branch> <version> <formatter>" || return 1
     fi
 
-    local FROM="$1"
-    local TO="$2"
+    local FROMBASE="$1"
+    local TOBASE="$2"
     local OWNER="$3"
     local BRANCH="$4"
     local VERSION="$5"
@@ -255,34 +255,39 @@ git_submodule_commit_log() {
     git clean -dffx
     git submodule foreach git clean -dffx
 
-    local tagname="jenkins-tmp-tag-${OWNER}-${BRANCH}"
+    local from="jenkins-tmp-tag-${OWNER}-${BRANCH}-from"
+    local to="jenkins-tmp-tag-${OWNER}-${BRANCH}-to"
 
-    # We have to do this bit to make sure ORIG_HEAD reliably points to the HEADs involved in the last build
     git commit -a --allow-empty -m "interim commit message for build $VERSION"
-    git tag -d "$tagname" || true
-    git tag "$tagname" $to
+    git tag -d "$to" || true
+    git tag "$to" $TOBASE
 
-    git checkout $FROM
+    git tag -d "$from" || true
+    git tag "$from" $FROMBASE
+
+    git checkout $from
     git clean -f -f -d -x
     # If the first reset fails, the master repo points to a rev that no longer
     # exists in the child
     git submodule foreach 'git reset --hard $sha1 || (echo "REVISION $sha1 ON REPO $name DOES NOT EXIST. CHANGELOG WILL BE INACCURATE."; true)'
-    git checkout "$tagname"
+    git checkout "$to"
     git clean -f -f -d -x
     git submodule foreach 'git reset --hard $sha1'
-    git tag -d "$tagname" || true
 
     git clean -dffx
     git submodule foreach git clean -dffx
-
-    git submodule foreach 'git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD' | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
 
     for name in $(git submodule foreach -q 'echo "$name"'); do
         (
         cd $name
         echo "Entering '$name' ($(git tag -l BUILD_TARGET -n1 | sed -e  's/.* //'))"
         git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD
-    ) done | $FORMATTER $OWNER $VERSION | git commit --amend --allow-empty -F -
+    ) done | $FORMATTER $OWNER $VERSION > msg
+
+    # Create a new commit with the same tree as $to, but with different parents
+    git reset --hard $(git commit-tree $(git rev-parse "$to^{tree}") -p "$from" -p "${OWNER}/${BRANCH}" < msg)
+
+    git tag -d "$from" "$to"
 }
 
 git_submodule_release_diff() {
