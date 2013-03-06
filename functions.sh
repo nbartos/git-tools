@@ -146,9 +146,12 @@ git_init_parent() {
     # This can fail on a new repo
     git reset --hard || true
 
+    # Remove all remotes, which also nukes all the branch tags
+    git remote | xargs -n1 git remote rm
+
     # Add remotes and fetch them
     for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
-        git remote add $remote "git@github.com:$remote/$REPO.git" || true
+        git remote add $remote "git@github.com:$remote/$REPO.git"
         git_retry_fetch $remote || true
     done
 
@@ -160,8 +163,12 @@ git_init_parent() {
     (
         cd $name
         echo "Entering '$name'"
+
+        # Remove the remotes for the submodule
+        git remote | xargs -n1 git remote rm
+
         for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
-            git remote add $remote "git@github.com:$remote/$name.git" || true
+            git remote add $remote "git@github.com:$remote/$name.git"
             git_retry_fetch $remote || true
         done
     ) done
