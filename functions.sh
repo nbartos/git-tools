@@ -295,4 +295,6 @@ exec ssh -F/dev/null -oControlPersist=10m -oControlMaster=auto -oControlPath="$b
 EOF
     chmod +x "$ssh_path"
     echo "export GIT_SSH=$ssh_path"
+    # Why does this fix it? :(
+    $ssh_path -N -f git@github.com
 }
