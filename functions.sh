@@ -291,7 +291,7 @@ git_enable_cached_ssh() {
 
     cat <<EOF > "$ssh_path"
 #!/bin/sh
-exec ssh -F/dev/null -oTCPKeepAlive=yes -oServerAliveInterval=60 -oControlPersist=10m -oControlMaster=auto -oControlPath="$base/piston-controlmaster-%r@%h:%p" \$*
+exec ssh -F/dev/null -oControlPersist=10m -oControlMaster=auto -oControlPath="$base/piston-controlmaster-%r@%h:%p" \$*
 EOF
     chmod +x "$ssh_path"
     echo "export GIT_SSH=$ssh_path"
