@@ -178,7 +178,10 @@ git_init_parent() {
             git remote add $remote "git@github.com:$remote/$name.git"
             git_retry_fetch missing-ok $remote
         done
-    ) done
+    )&
+    done
+
+    wait
 }
 
 git_update_submodules() {
