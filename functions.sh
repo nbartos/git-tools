@@ -71,7 +71,7 @@ git_retry_fetch() {
     (
         set +e
         for try in `seq 1 5`; do
-            local msg
+            local msg=""
             msg="$(git fetch -q $@ 2>&1)"
             case $? in
                 0)
