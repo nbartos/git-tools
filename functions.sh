@@ -207,7 +207,7 @@ git_update_submodules() {
         branch=$(cd $name && git_select_branch $OWNER $BRANCH $FALLBACK)
         (
             cd $name
-            git tag -d BUILD_TARGET || true
+            git tag -d BUILD_TARGET &>/dev/null || true
             git tag -m "$branch" BUILD_TARGET "$branch"
         )
         git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
