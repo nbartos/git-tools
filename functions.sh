@@ -60,12 +60,19 @@ git_has_substring() {
 }
 
 git_retry_fetch() {
+    # What to return if the repo is definitely missing.
+    return_if_missing=1
+    if [ $1 = 'missing-ok' ]; then
+        return_if_missing=0
+        shift 1
+    fi
+
     # Note this is all in a subshell, so I can turn off -e
     (
         set +e
         for try in `seq 1 5`; do
             local msg
-            msg="$(git fetch $@ 2>&1)"
+            msg="$(git fetch -q $@ 2>&1)"
             case $? in
                 0)
                     warn "git fetch $@ succeeded"
@@ -75,11 +82,11 @@ git_retry_fetch() {
                     case "$msg" in
                         *"Repository not found"*)
                             warn "No repo while fetching $@"
-                            return 1
+                            return $return_if_missing
                             ;;
                         *"Couldn't find remote ref"*)
                             warn "No branch while fetching $@"
-                            return 1
+                            return $return_if_missing
                             ;;
                         *"Permission denied"*)
                             die "Permission denied while fetching $@. Fix permissions." || return 1
@@ -152,7 +159,7 @@ git_init_parent() {
     # Add remotes and fetch them
     for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
         git remote add $remote "git@github.com:$remote/$REPO.git"
-        git_retry_fetch $remote || true
+        git_retry_fetch missing-ok $remote
     done
 
     git checkout "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
@@ -169,7 +176,7 @@ git_init_parent() {
 
         for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
             git remote add $remote "git@github.com:$remote/$name.git"
-            git_retry_fetch $remote || true
+            git_retry_fetch missing-ok $remote
         done
     ) done
 }
