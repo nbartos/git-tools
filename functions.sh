@@ -149,7 +149,7 @@ git_init_parent() {
 
     warn "Creating base repo and fetching remotes"
 
-    git clean -f -f -d -x
+    git clean -ffdxq
     # This can fail on a new repo
     git reset -q --hard || true
 
@@ -163,7 +163,7 @@ git_init_parent() {
     done
 
     git checkout -q "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
-    git clean -f -f -d -x
+    git clean -ffdxq
 
     # Add child remotes and fetch them
     for name in $(git submodule foreach -q 'echo "$name"'); do
@@ -216,7 +216,7 @@ git_update_submodules() {
         )
         git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
     done
-    git submodule foreach -q "git clean -f -f -d -x"
+    git submodule foreach -q "git clean -ffdxq"
 }
 
 git_submodule_commit_log() {
@@ -232,8 +232,8 @@ git_submodule_commit_log() {
     local VERSION="$5"
     local FORMATTER="$6"
 
-    git clean -dffx
-    git submodule -q foreach git clean -dffx
+    git clean -ffdxq
+    git submodule -q foreach git clean -ffdxq
 
     local from="jenkins-tmp-tag-${OWNER}-${BRANCH}-from"
     local to="jenkins-tmp-tag-${OWNER}-${BRANCH}-to"
@@ -246,16 +246,16 @@ git_submodule_commit_log() {
     git tag "$from" $FROMBASE
 
     git checkout -q $from
-    git clean -f -f -d -x
+    git clean -ffdxq
     # If the first reset fails, the master repo points to a rev that no longer
     # exists in the child
     git submodule -q foreach 'git reset -q --hard $sha1 || (echo "REVISION $sha1 ON REPO $name DOES NOT EXIST. CHANGELOG WILL BE INACCURATE."; true)'
     git checkout -q "$to"
-    git clean -f -f -d -x
+    git clean -ffdxq
     git submodule -q foreach 'git reset -q --hard $sha1'
 
-    git clean -dffx
-    git submodule -q foreach git clean -dffx
+    git clean -ffdxq
+    git submodule -q foreach git clean -ffdxq
 
     local tmpfile=$(mktemp --suffix=.pentos-msg)
     for name in $(git submodule foreach -q 'echo "$name"'); do
