@@ -75,7 +75,6 @@ git_retry_fetch() {
             msg="$(git fetch -q $@ 2>&1)"
             case $? in
                 0)
-                    warn "git fetch $@ succeeded"
                     return 0
                     ;;
                 *)
@@ -151,7 +150,7 @@ git_init_parent() {
 
     git clean -f -f -d -x
     # This can fail on a new repo
-    git reset --hard 2>/dev/null || true
+    git reset -q --hard || true
 
     # Remove all remotes, which also nukes all the branch tags
     git remote | xargs -n1 git remote rm || true
@@ -162,7 +161,7 @@ git_init_parent() {
         git_retry_fetch missing-ok $remote
     done
 
-    git checkout "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
+    git checkout -q "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
     git clean -f -f -d -x
 
     # Add child remotes and fetch them
