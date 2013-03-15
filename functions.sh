@@ -151,10 +151,10 @@ git_init_parent() {
 
     git clean -f -f -d -x
     # This can fail on a new repo
-    git reset --hard || true
+    git reset --hard 2>/dev/null || true
 
     # Remove all remotes, which also nukes all the branch tags
-    git remote | xargs -n1 git remote rm
+    git remote | xargs -n1 git remote rm || true
 
     # Add remotes and fetch them
     for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
