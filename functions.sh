@@ -80,11 +80,11 @@ git_retry_fetch() {
                 *)
                     case "$msg" in
                         *"Repository not found"*)
-                            warn "No repo while fetching $@"
+                            #warn "No repo while fetching $@"
                             return $return_if_missing
                             ;;
                         *"Couldn't find remote ref"*)
-                            warn "No branch while fetching $@"
+                            #warn "No branch while fetching $@"
                             return $return_if_missing
                             ;;
                         *"Permission denied"*)
@@ -116,7 +116,7 @@ git_select_branch() {
 
     for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
         if git rev-parse --quiet --verify "$fullbranch" > /dev/null; then
-            warn "Choosing $REPO/$fullbranch"
+            warn "$(printf '%20s %s' $REPO $fullbranch)"
             echo "$fullbranch"
             return 0
         fi
@@ -148,6 +148,8 @@ git_init_parent() {
     local FALLBACK="${3:-${OWNER}}"
     local REPO=$(basename $PWD)
 
+    warn "Creating base repo for build"
+
     git clean -f -f -d -x
     # This can fail on a new repo
     git reset -q --hard || true
@@ -168,10 +170,8 @@ git_init_parent() {
     for name in $(git submodule foreach -q 'echo "$name"'); do
     (
         cd $name
-        echo "Entering '$name'"
-
         # Remove the remotes for the submodule
-        git remote | xargs -n1 git remote rm
+        git remote | xargs -n1 git remote rm || true
 
         for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
             git remote add $remote "git@github.com:$remote/$name.git"
@@ -196,11 +196,15 @@ git_update_submodules() {
     local BRANCH="$2"
     local FALLBACK="${3:-${OWNER}}"
 
-    git submodule sync
+    warn "Overlaying ${OWNER}/${BRANCH} on top of ${FALLBACK}"
+
+    git submodule -q sync
 
     # This can fail if the branch in question is old. The log message will be
     # weird, but that's okay.
     git submodule update --init --recursive || true
+
+    warn "These are the branches I chose:"
 
     for name in $(git submodule foreach -q 'echo "$name"'); do
         branch=$(cd $name && git_select_branch $OWNER $BRANCH $FALLBACK)
@@ -212,7 +216,7 @@ git_update_submodules() {
         git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
     done
     git submodule foreach "git reset --hard BUILD_TARGET"
-    git submodule foreach "git clean -f -f -d -x"
+    git submodule foreach -q "git clean -f -f -d -x"
 }
 
 git_submodule_commit_log() {
@@ -229,29 +233,29 @@ git_submodule_commit_log() {
     local FORMATTER="$6"
 
     git clean -dffx
-    git submodule foreach git clean -dffx
+    git submodule -q foreach git clean -dffx
 
     local from="jenkins-tmp-tag-${OWNER}-${BRANCH}-from"
     local to="jenkins-tmp-tag-${OWNER}-${BRANCH}-to"
 
     git commit -a --allow-empty -m "interim commit message for build $VERSION"
-    git tag -d "$to" || true
+    git tag -d "$to" 2>/dev/null || true
     git tag "$to" $TOBASE
 
-    git tag -d "$from" || true
+    git tag -d "$from" 2>/dev/null || true
     git tag "$from" $FROMBASE
 
-    git checkout $from
+    git checkout -q $from
     git clean -f -f -d -x
     # If the first reset fails, the master repo points to a rev that no longer
     # exists in the child
-    git submodule foreach 'git reset --hard $sha1 || (echo "REVISION $sha1 ON REPO $name DOES NOT EXIST. CHANGELOG WILL BE INACCURATE."; true)'
-    git checkout "$to"
+    git submodule -q foreach 'git reset -q --hard $sha1 || (echo "REVISION $sha1 ON REPO $name DOES NOT EXIST. CHANGELOG WILL BE INACCURATE."; true)'
+    git checkout -q "$to"
     git clean -f -f -d -x
-    git submodule foreach 'git reset --hard $sha1'
+    git submodule -q foreach 'git reset -q --hard $sha1'
 
     git clean -dffx
-    git submodule foreach git clean -dffx
+    git submodule -q foreach git clean -dffx
 
     local tmpfile=$(mktemp --suffix=.pentos-msg)
     for name in $(git submodule foreach -q 'echo "$name"'); do
@@ -272,10 +276,10 @@ git_submodule_commit_log() {
     if [ -z "$rev" ]; then
         die "commit failed" || return 1
     fi
-    git reset --hard "$rev"
+    git reset -q --hard "$rev"
 
     rm -f $tmpfile
-    git tag -d "$from" "$to"
+    git tag -d "$from" "$to" >/dev/null
 }
 
 git_submodule_release_diff() {
