@@ -116,7 +116,6 @@ git_select_branch() {
 
     for fullbranch in $(git_fallback_branch $OWNER $BRANCH $FALLBACK); do
         if git rev-parse --quiet --verify "$fullbranch" > /dev/null; then
-            warn "$(printf '%20s %s' $REPO $fullbranch)"
             echo "$fullbranch"
             return 0
         fi
@@ -148,7 +147,7 @@ git_init_parent() {
     local FALLBACK="${3:-${OWNER}}"
     local REPO=$(basename $PWD)
 
-    warn "Creating base repo for build"
+    warn "Creating base repo and fetching remotes"
 
     git clean -f -f -d -x
     # This can fail on a new repo
@@ -202,7 +201,7 @@ git_update_submodules() {
 
     # This can fail if the branch in question is old. The log message will be
     # weird, but that's okay.
-    git submodule update --init --recursive || true
+    git submodule -q update --init --recursive || true
 
     warn "These are the branches I chose:"
 
@@ -212,10 +211,11 @@ git_update_submodules() {
             cd $name
             git tag -d BUILD_TARGET &>/dev/null || true
             git tag -m "$branch" BUILD_TARGET "$branch"
+            git reset -q --hard BUILD_TARGET
+            warn "$(printf '%15s %-21s' $name $branch) $(git show -s --oneline)"
         )
         git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
     done
-    git submodule foreach "git reset --hard BUILD_TARGET"
     git submodule foreach -q "git clean -f -f -d -x"
 }
 
@@ -238,7 +238,7 @@ git_submodule_commit_log() {
     local from="jenkins-tmp-tag-${OWNER}-${BRANCH}-from"
     local to="jenkins-tmp-tag-${OWNER}-${BRANCH}-to"
 
-    git commit -a --allow-empty -m "interim commit message for build $VERSION"
+    git commit -q -a --allow-empty -m "interim commit message for build $VERSION"
     git tag -d "$to" 2>/dev/null || true
     git tag "$to" $TOBASE
 
