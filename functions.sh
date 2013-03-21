@@ -199,6 +199,8 @@ git_update_submodules() {
 
     git submodule -q sync
 
+    git clean -ffdqx
+
     # This can fail if the branch in question is old. The log message will be
     # weird, but that's okay.
     git submodule -q update --init --recursive || true
