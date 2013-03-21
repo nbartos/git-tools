@@ -210,7 +210,7 @@ git_update_submodules() {
         (
             cd $name
             git tag -d BUILD_TARGET &>/dev/null || true
-            git tag -m "$branch" BUILD_TARGET "$branch"
+            git tag BUILD_TARGET "$branch"
             git reset -q --hard BUILD_TARGET
             warn "$(printf '%15s %-21s' $name $branch) $(git show -s --oneline)"
         )
@@ -261,7 +261,7 @@ git_submodule_commit_log() {
     for name in $(git submodule foreach -q 'echo "$name"'); do
     (
         cd $name
-        echo "Entering '$name' ($(git tag -l BUILD_TARGET -n1 | sed -e  's/.* //'))"
+        echo "Entering '$name' ($(git branch -r --contains HEAD))"
         git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD
     )
     done | $FORMATTER $OWNER $VERSION > $tmpfile
