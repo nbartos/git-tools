@@ -263,7 +263,7 @@ git_submodule_commit_log() {
     for name in $(git submodule foreach -q 'echo "$name"'); do
     (
         cd $name
-        echo "Entering '$name' ($(git branch -r --contains HEAD))"
+        echo "Entering '$name' ($(git branch -r --contains HEAD | sed -e 's/->.*//' | grep -v '/HEAD' | xargs echo | sed -e 's/^\s*\(.*\)\s*$/\1/g'))"
         git log --stat $(git merge-base ORIG_HEAD HEAD)..HEAD
     )
     done | $FORMATTER $OWNER $VERSION > $tmpfile
