@@ -320,3 +320,23 @@ EOF
     # Why does this fix it? :(
     $ssh_path -N -f git@github.com
 }
+
+git_select_version() {
+    if test $# -ne 4; then
+        die "git_select_version <owner> <branch> <fallback> <default>" || return 1
+    fi
+
+    local OWNER="$1"
+    local BRANCH="$2"
+    local FALLBACK="$3"
+    local DEFAULT="$4"
+
+    local branch="$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
+    local branchversion="${branch#*/}"
+    branchversion="${branchversion%%/*}"
+
+    case $branchversion in
+        v*) echo "${branchversion#v}" ;;
+        *)  echo $DEFAULT ;;
+    esac
+}
