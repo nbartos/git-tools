@@ -201,9 +201,8 @@ git_update_submodules() {
 
     git clean -ffdqx
 
-    # This can fail if the branch in question is old. The log message will be
-    # weird, but that's okay.
-    git submodule -q update --init --recursive || true
+    # This can fail if the branch in question is old (or if the repo checkout fails)
+    git submodule -q update --init --recursive
 
     warn "These are the branches I chose:"
 
