@@ -321,21 +321,30 @@ EOF
 }
 
 git_select_version() {
-    if test $# -ne 4; then
-        die "git_select_version <owner> <branch> <fallback> <default>" || return 1
+    if test $# -ne 3; then
+        die "git_select_version <owner> <branch> <fallback>" || return 1
     fi
 
     local OWNER="$1"
     local BRANCH="$2"
     local FALLBACK="$3"
-    local DEFAULT="$4"
 
     local branch="$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
-    local branchversion="${branch#*/}"
-    branchversion="${branchversion%%/*}"
 
-    case $branchversion in
-        v*) echo "${branchversion#v}" ;;
-        *)  echo $DEFAULT ;;
-    esac
+    # Check for a version tag in the branch name
+    version=$(expr match "$branch" '^[^/]\+/\([0-9]\+\.[0-9]\+\)/[^/]\+$' || true)
+    if test -n "$version"; then
+        warn "Retrieved version $version from branch $branch"
+    else
+        # no version from branch. okay, is it the dev branch?
+        if ! expr match "$branch" '^[^/]\+/[^/]\+$' >/dev/null; then
+            die "Illegally-formatted branch name: $branch (expecting remote/branch or remote/\d+.\d+/branch"
+        fi
+        # Okay, it's a dev branch, extract the version from the bump tag
+        local desc="$(git describe --match 'bump-*' "$branch" || die 'Could not find a bump tag')"
+
+        version=$(expr match "$desc" '^bump-\([0-9]\+\.[0-9]\+\)' || die "Could not retrieve version from tag description $desc")
+        warn "Retrieved version $version from tag description $desc"
+    fi
+    echo "$version"
 }
