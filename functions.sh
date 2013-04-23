@@ -70,7 +70,7 @@ git_retry_fetch() {
     # Note this is all in a subshell, so I can turn off -e
     (
         set +e
-        for try in `seq 1 5`; do
+        for try in `seq 1 10`; do
             local msg=""
             msg="$(git fetch -q $@ 2>&1)"
             case $? in
@@ -92,7 +92,7 @@ git_retry_fetch() {
                             ;;
                         *)
                             warn "Try $try/5 failed, could not contact remote [$msg]"
-                            sleep 1
+                            sleep 3
                             continue
                             ;;
                         esac
