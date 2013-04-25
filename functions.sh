@@ -91,7 +91,7 @@ git_retry_fetch() {
                             die "Permission denied while fetching $@. Fix permissions." || return 1
                             ;;
                         *)
-                            warn "Try $try/5 failed, could not contact remote [$msg]"
+                            warn "Try $try/10 failed, could not contact remote [$msg]"
                             sleep 3
                             continue
                             ;;
@@ -99,8 +99,7 @@ git_retry_fetch() {
                     ;;
             esac
         done
-        warn "Timed out while calling git_retry_fetch $@"
-        return 254
+        die "Timed out while calling git_retry_fetch $@"
     )
 }
 
