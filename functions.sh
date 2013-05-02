@@ -92,7 +92,7 @@ git_retry_fetch() {
                             ;;
                         *)
                             warn "Try $try/10 failed, could not contact remote [$msg]"
-                            sleep 3
+                            sleep 10
                             continue
                             ;;
                         esac
