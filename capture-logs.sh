@@ -23,6 +23,8 @@ scp -q automated-build.log.gz $FS_SSH_USER@$FILESERVER:/home/shared/builds/$GITH
 
 set +x
 
+echo
+echo
 echo "Errors in the log:"
 
 if test -x "$WORKSPACE"/teacup/tools/extract-errors.py
