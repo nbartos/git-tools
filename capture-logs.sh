@@ -60,5 +60,6 @@ http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RE
 </story>
 EOF
 
+echo "Filing Pivotal bug for $RELEASE_VERSION"
 curl --retry 5 --retry-delay 5 -H "X-TrackerToken: $PIVOTAL_TOKEN" -X POST -H "Content-type: application/xml" \
     -d "$xml" http://www.pivotaltracker.com/services/v3/projects/$PIVOTAL_PROJECT_ID/stories
