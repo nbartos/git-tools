@@ -55,6 +55,7 @@ read -r -d '' xml <<-EOF || true
 <story>
     <story_type>bug</story_type>
     <name>Test Failure: $RELEASE_VERSION [automatically filed by Jenkins]</name>
+    <labels>jenkins</labels>
     <description>https://albino.pistoncloud.com/job/Functional_Tests/$BUILD_NUMBER/console
 http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log
 http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz</description>
