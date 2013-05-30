@@ -40,6 +40,7 @@ Options to view the log:
 http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log
 http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz
 scp $FILESERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz .
+
 EOF
 
 if [ "$GITHUB_OWNER" != "piston" ]; then
@@ -53,7 +54,7 @@ fi
 read -r -d '' xml <<-EOF || true
 <story>
     <story_type>bug</story_type>
-    <name>Test Failure: $RELEASE_VERSION</name>
+    <name>Test Failure: $RELEASE_VERSION [automatically filed by Jenkins]</name>
     <description>https://albino.pistoncloud.com/job/Functional_Tests/$BUILD_NUMBER/console
 http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log
 http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz</description>
