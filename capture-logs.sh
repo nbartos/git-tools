@@ -4,7 +4,7 @@ set -x
 set -e
 set -o pipefail
 
-if [ -z "$FILESERVER" -o -z "$FS_SSH_USER" -o -z "$RELEASE_VERSION" -o -z "$GITHUB_OWNER" -o -z "$GITHUB_BRANCH" -o -z "$BUILD_NUMBER" -o -z "$WORKSPACE" -o -z "$PIVOTAL_TOKEN" -o -z "$PIVOTAL_PROJECT_ID" ]
+if [ -z "$FILESERVER" -o -z "$FS_SSH_USER" -o -z "$RELEASE_VERSION" -o -z "$GITHUB_OWNER" -o -z "$GITHUB_BRANCH" -o -z "$BUILD_NUMBER" -o -z "$WORKSPACE" ]
 then
     echo "Required variable not set" >&2
     exit 1
