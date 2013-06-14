@@ -122,16 +122,6 @@ git_select_branch() {
     die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK" || return 1
 }
 
-# Fallback tests:
-#echo "Given[upstream/master] Expected[upstream/master] Got[" `git_fallback_branch upstream master upstream` "]"
-#echo "Given[upstream/dev] Expected[upstream/dev upstream/master] Got[" `git_fallback_branch upstream dev upstream` "]"
-#echo "Given[bob/master] Expected[bob/master upstream/master] Got[" `git_fallback_branch bob master upstream` "]"
-#echo "Given[bob/dev] Expected[bob/dev upstream/dev upstream/master] Got[" `git_fallback_branch bob dev upstream` "]"
-#echo "Given[upstream/diablo/master] Expected[upstream/diablo/master] Got[" `git_fallback_branch upstream diablo/master upstream` "]"
-#echo "Given[upstream/diablo/dev] Expected[upstream/diablo/dev upstream/diablo/master] Got[" `git_fallback_branch upstream diablo/dev upstream` "]"
-#echo "Given[bob/diablo/master] Expected[bob/diablo/master upstream/diablo/master] Got[" `git_fallback_branch bob diablo/master upstream` "]"
-#echo "Given[bob/diablo/dev] Expected[bob/diablo/dev upstream/diablo/dev upstream/diablo/master] Got[" `git_fallback_branch bob diablo/dev upstream` "]"
-
 git_init_parent() {
     if test $# -gt 3 -o $# -lt 2; then
         die "git_init_parent <owner> <branch> [<fallback-owner>]" || return 1
@@ -280,6 +270,25 @@ git_submodule_commit_log() {
 
     rm -f $tmpfile
     git tag -d "$from" "$to" >/dev/null
+
+    git submodule foreach git tag -a -m version "v$VERSION"
+}
+
+git_push_everything() {
+    if test $# -ne 3; then
+        die "git_push_everything <owner> <branch> <version>" || return 1
+    fi
+
+    local OWNER="$1"
+    local BRANCH="$2"
+    local VERSION="$3"
+
+    # In the case of concurrent builds, there could be a conflict here; merge!
+    git_retry_fetch "$OWNER"
+    git rev-parse --quiet --verify "$OWNER/$BRANCH" && git merge --no-edit --ff -X ours -m "Merge: some changelogs may be duplicated in the next commit" "$OWNER/$BRANCH"
+
+    git submodule foreach git push "$OWNER" "v$VERSION"
+    git push "$OWNER" "HEAD:refs/heads/$BRANCH"
 }
 
 git_submodule_release_diff() {
