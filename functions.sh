@@ -275,19 +275,23 @@ git_submodule_commit_log() {
 }
 
 git_push_everything() {
-    if test $# -ne 3; then
-        die "git_push_everything <owner> <branch> <version>" || return 1
+    if test $# -ne 4; then
+        die "git_push_everything <owner> <branch> <fallback> <version>" || return 1
     fi
 
     local OWNER="$1"
     local BRANCH="$2"
-    local VERSION="$3"
+    local FALLBACK="$3"
+    local VERSION="$4"
 
     # In the case of concurrent builds, there could be a conflict here; merge!
     git_retry_fetch "$OWNER"
     git rev-parse --quiet --verify "$OWNER/$BRANCH" && git merge --no-edit --ff -X ours -m "Merge: some changelogs may be duplicated in the next commit" "$OWNER/$BRANCH"
 
-    git submodule foreach git push "$OWNER" "v$VERSION"
+    if [ "$OWNER/$BRANCH" = "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)" ]; then
+        git submodule foreach git push "$OWNER" "v$VERSION"
+    fi
+
     git push "$OWNER" "HEAD:refs/heads/$BRANCH"
 }
 
