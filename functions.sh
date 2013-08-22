@@ -122,13 +122,13 @@ git_select_branch() {
     die "Could not find any branches to use for $OWNER/$REPO/$BRANCH with fallback $FALLBACK" || return 1
 }
 
-git_init_parent() {
+git_fetch_parent() {
     if test $# -gt 3 -o $# -lt 2; then
-        die "git_init_parent <owner> <branch> [<fallback-owner>]" || return 1
+        die "git_fetch_parent <owner> <branch> [<fallback-owner>]" || return 1
     fi
 
     if test "$(git rev-parse --git-dir)" != ".git"; then
-        die "git_init_parent: CWD must be the top level of a git repo" || return 1
+        die "git_fetch_parent: CWD must be the top level of a git repo" || return 1
     fi
 
     local OWNER="$1"
@@ -150,6 +150,23 @@ git_init_parent() {
         git remote add $remote "git@github.com:$remote/$REPO.git"
         git_retry_fetch missing-ok $remote
     done
+}
+
+git_init_parent() {
+    if test $# -gt 3 -o $# -lt 2; then
+        die "git_init_parent <owner> <branch> [<fallback-owner>]" || return 1
+    fi
+
+    if test "$(git rev-parse --git-dir)" != ".git"; then
+        die "git_init_parent: CWD must be the top level of a git repo" || return 1
+    fi
+
+    local OWNER="$1"
+    local BRANCH="$2"
+    local FALLBACK="${3:-${OWNER}}"
+    local REPO=$(basename $PWD)
+
+    git_fetch_parent "$@"
 
     git checkout -q "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
     git clean -ffdxq
