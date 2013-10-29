@@ -227,6 +227,7 @@ git_update_submodules() {
 }
 
 git_submodule_commit_log() {
+    set -x
 
     if test $# -ne 6; then
         die "git_submodule_commit_log <from> <to> <owner> <branch> <version> <formatter>" || return 1
@@ -289,6 +290,8 @@ git_submodule_commit_log() {
     git tag -d "$from" "$to" >/dev/null
 
     git submodule foreach git tag -a -m version "v$VERSION"
+
+    set +x
 }
 
 git_push_everything() {
