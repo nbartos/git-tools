@@ -170,22 +170,6 @@ git_init_parent() {
 
     git checkout -q "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
     git clean -ffdxq
-
-    # Add child remotes and fetch them
-    for name in $(git submodule foreach -q 'echo "$name"'); do
-    (
-        cd $name
-        # Remove the remotes for the submodule
-        git remote | xargs -n1 git remote rm || true
-
-        for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
-            git remote add $remote "git@github.com:$remote/$name.git"
-            git_retry_fetch missing-ok $remote
-        done
-    )&
-    done
-
-    wait
 }
 
 git_update_submodules() {
@@ -201,15 +185,34 @@ git_update_submodules() {
     local BRANCH="$2"
     local FALLBACK="${3:-${OWNER}}"
 
-    warn "Overlaying ${OWNER}/${BRANCH} on top of ${FALLBACK}"
-
     git submodule -q sync
 
     git clean -ffdqx
 
+    warn "Syncing submodules"
+
     # This can fail if the branch in question is old (or if the repo checkout fails)
+    # And that might be okay, as long as it's only the subtree checkout that
+    # fails. Probably.
+    # The list of submodules cannot be trusted until this command runs.
     git submodule -q update --init --recursive
 
+    # Add child remotes and fetch them
+    for name in $(git submodule foreach -q 'echo "$name"'); do
+    (
+        cd $name
+        # Remove the remotes for the submodule
+        git remote | xargs -n1 git remote rm || true
+
+        for remote in $(git_fallback_remote $OWNER $BRANCH $FALLBACK); do
+            git remote add $remote "git@github.com:$remote/$name.git"
+            git_retry_fetch missing-ok $remote
+        done
+    )&
+    done
+    wait
+
+    warn "Overlaying ${OWNER}/${BRANCH} on top of ${FALLBACK}"
     warn "These are the branches I chose:"
 
     for name in $(git submodule foreach -q 'echo "$name"'); do
