@@ -189,13 +189,17 @@ git_update_submodules() {
 
     git clean -ffdqx
 
-    warn "Syncing submodules"
+    warn "Syncing submodules list (errors here are okay)"
 
     # This can fail if the branch in question is old (or if the repo checkout fails)
     # And that might be okay, as long as it's only the subtree checkout that
     # fails. Probably.
     # The list of submodules cannot be trusted until this command runs.
-    git submodule -q update --init --recursive
+    git submodule -q update --init --recursive || true
+
+    # Now the list of submodules should be up to date, but some of them may
+    # still be old.  Add the remotes and fetch them, then update again (without
+    # || true) to make sure we're synced.
 
     # Add child remotes and fetch them
     for name in $(git submodule foreach -q 'echo "$name"'); do
@@ -211,6 +215,9 @@ git_update_submodules() {
     )&
     done
     wait
+
+    warn "Syncing submodule data"
+    git submodule -q update --init --recursive
 
     warn "Overlaying ${OWNER}/${BRANCH} on top of ${FALLBACK}"
     warn "These are the branches I chose:"
