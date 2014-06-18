@@ -185,16 +185,14 @@ git_update_submodules() {
     local BRANCH="$2"
     local FALLBACK="${3:-${OWNER}}"
 
-    git submodule -q sync
-
     git clean -ffdqx
 
-    warn "Syncing submodules list (errors here are okay)"
-
+    warn "Syncing submodule list (tree reference errors are okay here if you rebased)"
     # This can fail if the branch in question is old (or if the repo checkout fails)
     # And that might be okay, as long as it's only the subtree checkout that
     # fails. Probably.
     # The list of submodules cannot be trusted until this command runs.
+    git submodule -q sync
     git submodule -q update --init --recursive || true
 
     # Now the list of submodules should be up to date, but some of them may
@@ -216,8 +214,12 @@ git_update_submodules() {
     done
     wait
 
-    warn "Syncing submodule data"
-    git submodule -q update --init --recursive
+    warn "Syncing submodule data (tree reference errors are okay here if you rebased)"
+    # If there was a rebase (such that the current branch we're looking for
+    # shares no history with the revision that pentos expects) we will get an
+    # error here (fatal: reference is not a tree: <revid>). That's okay.
+    git submodule -q sync
+    git submodule -q update --init --recursive || true
 
     warn "Overlaying ${OWNER}/${BRANCH} on top of ${FALLBACK}"
     warn "These are the branches I chose:"
