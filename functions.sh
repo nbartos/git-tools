@@ -231,6 +231,7 @@ git_update_submodules() {
     warn "Overlaying ${OWNER}/${BRANCH} on top of ${FALLBACK}"
     warn "These are the branches I chose:"
 
+    used_branches=
     for name in $(git submodule foreach -q 'echo "$name"'); do
         branch=$(cd $name && git_select_branch $OWNER $BRANCH $FALLBACK)
         (
@@ -240,9 +241,14 @@ git_update_submodules() {
             git reset -q --hard BUILD_TARGET
             warn "$(printf "%15s %-${branchwidth}s" $name $branch) $(git show -s --oneline)"
         )
+        used_branches="$used_branches\n$branch"
         git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
     done
     git submodule foreach -q "git clean -ffdxq"
+    if ! echo -e "$used_branches" | grep -q "^${OWNER}/${BRANCH}$"; then
+        warn
+        die "You told me to use ${OWNER}/${BRANCH} but I found no branches by that name"
+    fi
 }
 
 git_submodule_commit_log() {
