@@ -185,6 +185,13 @@ git_update_submodules() {
     local BRANCH="$2"
     local FALLBACK="${3:-${OWNER}}"
 
+    # 6 is the length of "master"
+    branchwidth=$(expr \
+        $(test ${#OWNER}  -gt ${#FALLBACK} && echo ${#OWNER} || echo ${#FALLBACK}) \
+        + \
+        $(test ${#BRANCH} -gt 6 && echo ${#BRANCH} || echo 6) \
+    )
+
     git clean -ffdqx
 
     warn "Syncing submodule list (tree reference errors are okay here if you rebased)"
@@ -231,7 +238,7 @@ git_update_submodules() {
             git tag -d BUILD_TARGET &>/dev/null || true
             git tag BUILD_TARGET "$branch"
             git reset -q --hard BUILD_TARGET
-            warn "$(printf '%15s %-21s' $name $branch) $(git show -s --oneline)"
+            warn "$(printf "%15s %-${branchwidth}s" $name $branch) $(git show -s --oneline)"
         )
         git config -f .gitmodules "submodule.$name.url" "git@github.com:${branch%%/*}/$name.git"
     done
