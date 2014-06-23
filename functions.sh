@@ -185,11 +185,14 @@ git_update_submodules() {
     local BRANCH="$2"
     local FALLBACK="${3:-${OWNER}}"
 
-    # 6 is the length of "master"
+    # 6 is the length of "master". The trailing 1 is for the / between the
+    # remote and branch.
     branchwidth=$(expr \
         $(test ${#OWNER}  -gt ${#FALLBACK} && echo ${#OWNER} || echo ${#FALLBACK}) \
         + \
         $(test ${#BRANCH} -gt 6 && echo ${#BRANCH} || echo 6) \
+        + \
+        1
     )
 
     git clean -ffdqx
