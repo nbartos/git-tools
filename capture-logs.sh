@@ -4,7 +4,9 @@ set -x
 set -e
 set -o pipefail
 
-if [ -z "$FILESERVER" -o -z "$FS_SSH_USER" -o -z "$RELEASE_VERSION" -o -z "$GITHUB_OWNER" -o -z "$GITHUB_BRANCH" -o -z "$BUILD_NUMBER" -o -z "$WORKSPACE" ]
+if [ -z "$RELEASE_VERSION" -o -z "$BUILD_NUMBER" -o -z "$GITHUB_OWNER" -o -z "$GITHUB_BRANCH" -o
+    -z "$WORKSPACE" -o -z "$FILE_SERVER" -o -z "$FILE_SERVER_USER" -o -z "$SYSLOG_SERVER" -o
+    -z "$SYSLOG_SERVER_USER" -o -z "$CLUSTER" ]
 then
     echo "Required variable not set" >&2
     exit 1
@@ -12,19 +14,18 @@ fi
 
 RELEASE_VERSION_ESCAPED=$(echo "$RELEASE_VERSION" | sed -e 's|\.|\\\.|g')
 
-nc -w0 -u $FILESERVER 514 <<< "automated-build20: Build $RELEASE_VERSION ($BUILD_NUMBER) finish"
+nc -w0 -u "$SYSLOG_SERVER" 514 <<< "automated-build$CLUSTER: Build $RELEASE_VERSION ($BUILD_NUMBER) finish"
 
-ssh $FS_SSH_USER@$FILESERVER "zcat /var/log/20-messages.1.gz | cat - /var/log/20-messages | awk '/ automated-build20: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) start/,/ automated-build20: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) finish$/' | gzip -c > automated-build.log.gz"
+ssh "$SYSLOG_SERVER_USER@$SYSLOG_SERVER" "zcat /var/log/$CLUSTER-messages.1.gz | cat - /var/log/$CLUSTER-messages | awk '/ automated-build$CLUSTER: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) start/,/ automated-build$CLUSTER: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) finish$/' | gzip -c > automated-build.log.gz"
 
-# TODO(NB) Try and do this in one step, the above command should be able to copy it directly, but ssh -A isn't working for some reason.
-scp -q $FS_SSH_USER@$FILESERVER:automated-build.log.gz .
+scp -q "$SYSLOG_SERVER_USER@$SYSLOG_SERVER:automated-build.log.gz" .
 
-scp -q automated-build.log.gz $FS_SSH_USER@$FILESERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz
+scp -q automated-build.log.gz "$FILE_SERVER_USER@$FILE_SERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz"
 
-if [ -d /tmp/teacup-artifacts-$EXECUTOR_NUMBER ]
+if [ -n "$EXECUTOR_NUMBER" -a -d "/tmp/teacup-artifacts-$EXECUTOR_NUMBER" ]
 then
-    rsync -rltgoD --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r /tmp/teacup-artifacts-$EXECUTOR_NUMBER/ $FS_SSH_USER@$FILESERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/teacup-artifacts-$RELEASE_VERSION-$BUILD_NUMBER/
-    rm -rf /tmp/teacup-artifacts-$EXECUTOR_NUMBER
+    rsync -rltgoD --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r "/tmp/teacup-artifacts-$EXECUTOR_NUMBER/" "$FILE_SERVER_USER@$FILE_SERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/teacup-artifacts-$RELEASE_VERSION-$BUILD_NUMBER/"
+    rm -rf "/tmp/teacup-artifacts-$EXECUTOR_NUMBER"
 fi
 
 set +x
@@ -43,9 +44,9 @@ echo
 
 cat <<EOF
 Options to view the log:
-http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log
-http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz
-http://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/teacup-artifacts-$RELEASE_VERSION-$BUILD_NUMBER/
-scp $FILESERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz .
+http://$FILE_SERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log
+http://$FILE_SERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz
+http://$FILE_SERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/teacup-artifacts-$RELEASE_VERSION-$BUILD_NUMBER/
+scp $FILE_SERVER:/home/shared/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$BUILD_NUMBER.log.gz .
 
 EOF
