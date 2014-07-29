@@ -4,8 +4,8 @@ set -x
 set -e
 set -o pipefail
 
-if [ -z "$RELEASE_VERSION" -o -z "$BUILD_NUMBER" -o -z "$GITHUB_OWNER" -o -z "$GITHUB_BRANCH" -o
-    -z "$WORKSPACE" -o -z "$FILE_SERVER" -o -z "$FILE_SERVER_USER" -o -z "$SYSLOG_SERVER" -o
+if [ -z "$RELEASE_VERSION" -o -z "$BUILD_NUMBER" -o -z "$GITHUB_OWNER" -o -z "$GITHUB_BRANCH" -o \
+    -z "$WORKSPACE" -o -z "$FILE_SERVER" -o -z "$FILE_SERVER_USER" -o -z "$SYSLOG_SERVER" -o \
     -z "$SYSLOG_SERVER_USER" -o -z "$CLUSTER" ]
 then
     echo "Required variable not set" >&2
