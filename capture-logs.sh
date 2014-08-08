@@ -16,7 +16,7 @@ RELEASE_VERSION_ESCAPED=$(echo "$RELEASE_VERSION" | sed -e 's|\.|\\\.|g')
 
 nc -w0 -u "$SYSLOG_SERVER" 514 <<< "automated-build$CLUSTER: Build $RELEASE_VERSION ($BUILD_NUMBER) finish"
 
-ssh "$SYSLOG_SERVER_USER@$SYSLOG_SERVER" "zcat /var/log/$CLUSTER-messages.1.gz | cat - /var/log/$CLUSTER-messages | awk '/ automated-build$CLUSTER: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) start/,/ automated-build$CLUSTER: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) finish$/' | gzip -c > automated-build.log.gz"
+ssh "$SYSLOG_SERVER_USER@$SYSLOG_SERVER" "set -o pipefail && set -e && cat /var/log/$CLUSTER-messages.1 /var/log/$CLUSTER-messages | awk '/ automated-build$CLUSTER: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) start/,/ automated-build$CLUSTER: Build $RELEASE_VERSION_ESCAPED \($BUILD_NUMBER\) finish$/' | gzip -c > automated-build.log.gz"
 
 scp -q "$SYSLOG_SERVER_USER@$SYSLOG_SERVER:automated-build.log.gz" .
 
