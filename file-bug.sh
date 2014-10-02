@@ -25,7 +25,7 @@ read -r -d '' json <<-EOF || true
  "name": "Test Failure: $RELEASE_VERSION [$TEST_BUILD_NUMBER] [automatically filed by Jenkins]",
  "owner_ids": [$PIVOTAL_OWNER_ID],
  "label_ids": [5803519],
- "description": "https://albino.pistoncloud.com/job/Functional_Tests/$TEST_BUILD_NUMBER/console\nhttp://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$TEST_BUILD_NUMBER.log\nhttp://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$TEST_BUILD_NUMBER.log.gz"
+ "description": "https://albino.piston.cc/job/Functional_Tests/$TEST_BUILD_NUMBER/console\nhttp://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$TEST_BUILD_NUMBER.log\nhttp://$FILESERVER/builds/$GITHUB_OWNER/$GITHUB_BRANCH/debug/functional-test-$RELEASE_VERSION-$TEST_BUILD_NUMBER.log.gz"
 }
 EOF
 
