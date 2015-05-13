@@ -427,7 +427,7 @@ git_select_version() {
     local branch="$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
 
     # Check for a version tag in the branch name
-    version=$(expr match "$branch" '^[^/]\+/\([0-9]\+\.[0-9]\+\)/[^/]\+$' || true)
+    version=$(expr match "$branch" '^[^/]\+/\([0-9]\+\.[0-9]\+\)/[^/]\+$') || true
     if test -n "$version"; then
         warn "Retrieved version $version from branch $branch"
     else
@@ -436,9 +436,9 @@ git_select_version() {
             die "Illegally-formatted branch name: $branch (expecting remote/branch or remote/\d+.\d+/branch"
         fi
         # Okay, it's a dev branch, extract the version from the bump tag
-        local desc="$(git describe --match 'bump-*' "$branch" || die 'Could not find a bump tag')"
+        local desc="$(git describe --match 'bump-*' "$branch")" || die 'Could not find a bump tag'
 
-        version=$(expr match "$desc" '^bump-\([0-9]\+\.[0-9]\+\)' || die "Could not retrieve version from tag description $desc")
+        version=$(expr match "$desc" '^bump-\([0-9]\+\.[0-9]\+\)') || die "Could not retrieve version from tag description $desc"
         warn "Retrieved version $version from tag description $desc"
     fi
     echo "$version"
