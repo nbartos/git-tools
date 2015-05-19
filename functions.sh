@@ -103,6 +103,41 @@ git_retry_fetch() {
     )
 }
 
+git_retry_tag() {
+    if test $# -ne 3; then
+        die "git_retry_tag <owner> <tag> <message>" || return 1
+    fi
+
+    git tag "$2" -a -m "$3"
+
+    # Note this is all in a subshell, so I can turn off -e
+    (
+        set +e
+        for try in `seq 1 10`; do
+            local msg=""
+            msg="$(git push "$1" "$2" 2>&1)"
+            case $? in
+                0)
+                    return 0
+                    ;;
+                *)
+                    case "$msg" in
+                        *"Permission denied"*)
+                            die "Permission denied while pushing to $1. Fix permissions." || return 1
+                            ;;
+                        *)
+                            warn "Try $try/10 failed, could not push to remote remote [$msg]"
+                            sleep 10
+                            continue
+                            ;;
+                        esac
+                    ;;
+            esac
+        done
+        die "Timed out while calling git_retry_tag $@"
+    )
+}
+
 git_select_branch() {
     if test $# -ne 3 -o -z "$1" -o -z "$2" -o -z "$3"; then
         die "git_select_branch <owner> <branch> <fallback-owner>" || return 1
@@ -392,7 +427,7 @@ git_select_version() {
     local branch="$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
 
     # Check for a version tag in the branch name
-    version=$(expr match "$branch" '^[^/]\+/\([0-9]\+\.[0-9]\+\)/[^/]\+$' || true)
+    version=$(expr match "$branch" '^[^/]\+/\([0-9]\+\.[0-9]\+\)/[^/]\+$') || true
     if test -n "$version"; then
         warn "Retrieved version $version from branch $branch"
     else
@@ -401,9 +436,9 @@ git_select_version() {
             die "Illegally-formatted branch name: $branch (expecting remote/branch or remote/\d+.\d+/branch"
         fi
         # Okay, it's a dev branch, extract the version from the bump tag
-        local desc="$(git describe --match 'bump-*' "$branch" || die 'Could not find a bump tag')"
+        local desc="$(git describe --match 'bump-*' "$branch")" || die 'Could not find a bump tag'
 
-        version=$(expr match "$desc" '^bump-\([0-9]\+\.[0-9]\+\)' || die "Could not retrieve version from tag description $desc")
+        version=$(expr match "$desc" '^bump-\([0-9]\+\.[0-9]\+\)') || die "Could not retrieve version from tag description $desc"
         warn "Retrieved version $version from tag description $desc"
     fi
     echo "$version"
