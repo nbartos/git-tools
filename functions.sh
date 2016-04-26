@@ -203,7 +203,7 @@ git_init_parent() {
 
     git_fetch_parent "$@"
 
-    git checkout -q "$(git_last_fallback_branch $OWNER $BRANCH $FALLBACK)"
+    git checkout -q "$(git_select_branch $OWNER $BRANCH $FALLBACK)"
     git clean -ffdxq
 }
 
