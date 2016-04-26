@@ -207,6 +207,26 @@ git_init_parent() {
     git clean -ffdxq
 }
 
+git_init_repo() {
+    if test $# -gt 3 -o $# -lt 2; then
+        die "git_init_repo <owner> <branch> [<fallback-owner>]" || return 1
+    fi
+
+    if test "$(git rev-parse --git-dir)" != ".git"; then
+        die "git_init_repo: CWD must be the top level of a git repo" || return 1
+    fi
+
+    local OWNER="$1"
+    local BRANCH="$2"
+    local FALLBACK="${3:-${OWNER}}"
+    local REPO=$(basename $PWD)
+
+    git_fetch_parent "$@"
+
+    git checkout -q "$(git_select_branch $OWNER $BRANCH $FALLBACK)"
+    git clean -ffdxq
+}
+
 git_update_submodules() {
     if test $# -gt 3 -o $# -lt 2; then
         die "git_update_submodules <owner> <branch> [fallback-owner]" || return 1
